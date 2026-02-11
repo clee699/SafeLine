@@ -2,7 +2,10 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"net/http"
+	"os"
 	"strconv"
 
 	"chaitin.cn/dev/go/errors"
@@ -208,4 +211,147 @@ func GetWebsite(ctx *gin.Context) {
 	db.Model(&model.Website{}).Count(&total)
 
 	response.Success(ctx, gin.H{"data": websiteList, "total": total})
+}
+
+func GetForbiddenPage(ctx *gin.Context) {
+	websiteID := ctx.Param("id")
+	db := database.GetDB()
+
+	var forbiddenPage model.ForbiddenPage
+	db.Where("website_id = ?", websiteID).First(&forbiddenPage)
+
+	response.Success(ctx, forbiddenPage)
+}
+
+func SetForbiddenPage(ctx *gin.Context) {
+	var params struct {
+		WebsiteID uint   `json:"website_id"`
+		Content   string `json:"content"`
+		IsEnabled bool   `json:"is_enabled"`
+	}
+
+	if err := ctx.BindJSON(&params); err != nil {
+		logger.Error(err)
+		response.Error(ctx, response.ErrorParamNotOK, http.StatusInternalServerError)
+		return
+	}
+
+	db := database.GetDB()
+	var forbiddenPage model.ForbiddenPage
+	db.Where("website_id = ?", params.WebsiteID).First(&forbiddenPage)
+
+	if forbiddenPage.ID == 0 {
+		// Create new
+		forbiddenPage = model.ForbiddenPage{
+			WebsiteID: params.WebsiteID,
+			Content:   params.Content,
+			IsEnabled: params.IsEnabled,
+		}
+		db.Create(&forbiddenPage)
+	} else {
+		// Update existing
+		forbiddenPage.Content = params.Content
+		forbiddenPage.IsEnabled = params.IsEnabled
+		db.Save(&forbiddenPage)
+	}
+
+	// Save to file system for nginx to use (path should match docker volume mapping)
+	filePath := fmt.Sprintf("/app/data/forbidden_pages/website_%d_forbidden_page.html", params.WebsiteID)
+	if params.IsEnabled {
+		// Create directory if not exists
+		os.MkdirAll("/app/data/forbidden_pages", 0755)
+		// Write content to file
+		err := os.WriteFile(filePath, []byte(params.Content), 0644)
+		if err != nil {
+			logger.Error(err)
+		}
+	} else {
+		// Remove file if exists
+		if _, err := os.Stat(filePath); err == nil {
+			err := os.Remove(filePath)
+			if err != nil {
+				logger.Error(err)
+			}
+		}
+	}
+
+	response.Success(ctx, nil)
+}
+
+func GetWebsiteAdvancedConfig(ctx *gin.Context) {
+	websiteID := ctx.Param("id")
+	db := database.GetDB()
+
+	var advancedConfig model.WebsiteAdvancedConfig
+	db.Where("website_id = ?", websiteID).First(&advancedConfig)
+
+	response.Success(ctx, advancedConfig)
+}
+
+func SetWebsiteAdvancedConfig(ctx *gin.Context) {
+	var params struct {
+		WebsiteID              uint                       `json:"website_id"`
+		RateLimit              model.RateLimitConfig      `json:"rate_limit"`
+		LoadBalancer           model.LoadBalancerConfig   `json:"load_balancer"`
+		AdvancedSettings       map[string]interface{}     `json:"advanced_settings"`
+		IsRateLimitEnabled     bool                       `json:"is_rate_limit_enabled"`
+		IsLoadBalancerEnabled  bool                       `json:"is_load_balancer_enabled"`
+	}
+
+	if err := ctx.BindJSON(&params); err != nil {
+		logger.Error(err)
+		response.Error(ctx, response.ErrorParamNotOK, http.StatusInternalServerError)
+		return
+	}
+
+	db := database.GetDB()
+	var advancedConfig model.WebsiteAdvancedConfig
+	db.Where("website_id = ?", params.WebsiteID).First(&advancedConfig)
+
+	// Marshal rate limit config to JSON
+	rateLimitJSON, err := json.Marshal(params.RateLimit)
+	if err != nil {
+		logger.Error(err)
+		response.Error(ctx, response.JSONBody{Err: response.ErrInternalError, Msg: err.Error()}, http.StatusInternalServerError)
+		return
+	}
+
+	// Marshal load balancer config to JSON
+	loadBalancerJSON, err := json.Marshal(params.LoadBalancer)
+	if err != nil {
+		logger.Error(err)
+		response.Error(ctx, response.JSONBody{Err: response.ErrInternalError, Msg: err.Error()}, http.StatusInternalServerError)
+		return
+	}
+
+	// Marshal advanced settings to JSON
+	advancedSettingsJSON, err := json.Marshal(params.AdvancedSettings)
+	if err != nil {
+		logger.Error(err)
+		response.Error(ctx, response.JSONBody{Err: response.ErrInternalError, Msg: err.Error()}, http.StatusInternalServerError)
+		return
+	}
+
+	if advancedConfig.ID == 0 {
+		// Create new
+		advancedConfig = model.WebsiteAdvancedConfig{
+			WebsiteID:              params.WebsiteID,
+			RateLimit:              rateLimitJSON,
+			LoadBalancer:           loadBalancerJSON,
+			AdvancedSettings:       advancedSettingsJSON,
+			IsRateLimitEnabled:     params.IsRateLimitEnabled,
+			IsLoadBalancerEnabled:  params.IsLoadBalancerEnabled,
+		}
+		db.Create(&advancedConfig)
+	} else {
+		// Update existing
+		advancedConfig.RateLimit = rateLimitJSON
+		advancedConfig.LoadBalancer = loadBalancerJSON
+		advancedConfig.AdvancedSettings = advancedSettingsJSON
+		advancedConfig.IsRateLimitEnabled = params.IsRateLimitEnabled
+		advancedConfig.IsLoadBalancerEnabled = params.IsLoadBalancerEnabled
+		db.Save(&advancedConfig)
+	}
+
+	response.Success(ctx, nil)
 }

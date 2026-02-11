@@ -18,6 +18,34 @@ import (
 
 const VersionInfoEntrypoint = "/release/latest/version.json"
 
+// API endpoints
+const (
+	Login                  = "/login"
+	Logout                 = "/logout"
+	Behaviour              = "/behaviour"
+	FalsePositives         = "/false_positives"
+	OTPUrl                 = "/otp_url"
+	Version                = "/version"
+	UpgradeTips            = "/upgrade_tips"
+	DetectLogList          = "/detect_log/list"
+	DetectLogDetail        = "/detect_log/detail"
+	Website                = "/website"
+	UploadSSLCert          = "/upload_ssl_cert"
+	SSLCert                = "/ssl_cert"
+	PolicyRule             = "/policy_rule"
+	SwitchPolicyRule       = "/switch_policy_rule"
+	DashboardCounts        = "/dashboard/counts"
+	DashboardSites         = "/dashboard/sites"
+	DashboardQps           = "/dashboard/qps"
+	DashboardRequests      = "/dashboard/requests"
+	DashboardIntercepts    = "/dashboard/intercepts"
+	PolicyGroupGlobal      = "/policy_group/global"
+	SrcIPConfig            = "/src_ip_config"
+	ForbiddenPage          = "/forbidden_page"
+	VerificationLogList    = "/verification_log/list"
+	DetectLogDownload      = "/detect_log/download"
+})
+
 type idsRequest struct {
 	IDs []uint `json:"ids" form:"ids"`
 }

@@ -75,6 +75,13 @@ func GenerateFullFSL(tx *gorm.DB) (fullFSL string, err error) {
 
 	fullFSL += MassPackageTable()
 
+	// Generate website rate limit rules
+	rlFSL, err := WebsiteRateLimitTable(tx)
+	if err != nil {
+		return "", err
+	}
+	fullFSL += rlFSL
+
 	prFSL, err := PolicyRuleTable(tx)
 	if err != nil {
 		return "", err
@@ -144,6 +151,77 @@ func MassPackageTable() (mpFSL string) {
 	return mpFSL
 }
 
+func WebsiteRateLimitTable(db *gorm.DB) (rlFSL string, err error) {
+	rlFSL += fsl.CreateTable("website_rate_limit", map[fsl.State]fsl.State{fsl.S_ABORT: fsl.S_RETURN})
+
+	// Get all website advanced configs with rate limit enabled
+	var advancedConfigs []model.WebsiteAdvancedConfig
+	db.Where(&model.WebsiteAdvancedConfig{IsRateLimitEnabled: true}).Find(&advancedConfigs)
+
+	for _, config := range advancedConfigs {
+		// Parse rate limit config
+		var rateLimit model.RateLimitConfig
+		if err := json.Unmarshal(config.RateLimit, &rateLimit); err != nil {
+			logger.Error(err)
+			continue
+		}
+
+		if !rateLimit.Enabled {
+			continue
+		}
+
+		// Generate rate limit key based on strategy
+		var rateLimitKey string
+		switch rateLimit.Strategy {
+		case "ip":
+			rateLimitKey = "inet_to_string(@src_ip::INET)"
+		case "user_agent":
+			rateLimitKey = "http.user_agent"
+		case "session":
+			rateLimitKey = "http.cookie"
+		default:
+			rateLimitKey = "inet_to_string(@src_ip::INET)" // Default to IP-based
+		}
+
+		// Generate whitelist conditions
+		var whitelistConditions []string
+		for _, ip := range rateLimit.WhitelistIPs {
+			whitelistConditions = append(whitelistConditions, fmt.Sprintf("inet_to_string(@src_ip::INET) != %s", fsl.Quote(ip)))
+		}
+
+		// Generate rate limit selector name
+		selectorName := fmt.Sprintf("rate_limit_website_%d", config.WebsiteID)
+
+		// Generate rate limit FSL
+		rateLimitExpr := fmt.Sprintf("rate_limit(%s, %d, %d)", rateLimitKey, rateLimit.Limit, rateLimit.Period)
+		rateLimitAction := fmt.Sprintf("rate_limit_block(%d)", rateLimit.BlockDuration)
+
+		// Add whitelist conditions if any
+		var conditions []string
+		if len(whitelistConditions) > 0 {
+			conditions = append(conditions, whitelistConditions...)
+		}
+
+		// Add website condition (if needed)
+		conditions = append(conditions, fmt.Sprintf("@site_uuid::STRING = %s", fsl.Quote(fmt.Sprintf("%d", config.WebsiteID))))
+
+		rateLimitActions := []string{
+			fsl.Set("@skip_remaining", BOOL, "true"),
+			fsl.Set("@rule_id", STR, fsl.Quote(fmt.Sprintf("/rate_limit_website_%d", config.WebsiteID))),
+			fsl.Set("@final_action", INT, "1"),
+			fsl.Set("@convert_to_dlog", INT, "1"),
+			fsl.Set("@dlog_save_to_db", INT, "1"),
+			fsl.Set("@attack_type", INT, "-5"), // Rate limit attack type
+			rateLimitAction,
+			"DROP",
+		}
+
+		rlFSL += fsl.AppendInto("website_rate_limit", selectorName, fsl.Wheres(conditions...), fsl.Actions(rateLimitActions...))
+	}
+
+	return rlFSL, nil
+}
+
 func PolicyRuleTable(db *gorm.DB) (prFSL string, err error) {
 	prFSL += fsl.CreateTable(PolicyRuleGlobal, map[fsl.State]fsl.State{fsl.S_ABORT: fsl.S_RETURN})
 
@@ -177,6 +255,12 @@ func PolicyRuleTable(db *gorm.DB) (prFSL string, err error) {
 				key = "@uri_decoded::STRING"
 			case model.KeyHost:
 				key = "http.host"
+			case model.KeyCountry:
+				key = "skynet.country"
+			case model.KeyProvince:
+				key = "skynet.province"
+			case model.KeyCity:
+				key = "skynet.city"
 			default:
 				return "", errors.New("wrong Key")
 			}
@@ -200,6 +284,12 @@ func PolicyRuleTable(db *gorm.DB) (prFSL string, err error) {
 				wheres = append(wheres, fmt.Sprintf("string.equals_case(string.substr(%s, 0, %d), %s)", key, l, fsl.Quote(pattern.V)))
 			case model.OpRe:
 				wheres = append(wheres, fmt.Sprintf("pcre_match(%s, %s)", fsl.Quote(pattern.V), key))
+			case model.OpGeoEq:
+				// GeoIP equal operator
+				wheres = append(wheres, fmt.Sprintf("string.equals_case(%s, %s)", key, fsl.Quote(pattern.V)))
+			case model.OpGeoNotEq:
+				// GeoIP not equal operator
+				wheres = append(wheres, fmt.Sprintf("!string.equals_case(%s, %s)", key, fsl.Quote(pattern.V)))
 			default:
 				return "", errors.New("wrong Operator")
 			}
@@ -310,8 +400,9 @@ func MainTable() (mainFSL string) {
 	mainFSL += fsl.CreateTable(Main, nil)
 	mainFSL += fsl.AppendInto(Main, "m_preprocess", "", fsl.Goto(Preprocess))
 	mainFSL += fsl.AppendInto(Main, "m_mass_package", "", fsl.Goto(MassPackage))
-	mainFSL += fsl.AppendInto(Main, "m_policy_rule", "@skip_remaining::BOOLEAN = false", fsl.Goto(PolicyRule))
+	mainFSL += fsl.AppendInto(Main, "m_website_rate_limit", "@skip_remaining::BOOLEAN = false", fsl.Goto("website_rate_limit"))
 	mainFSL += fsl.AppendInto(Main, "m_policy_group", "@skip_remaining::BOOLEAN = false", fsl.Goto(PolicyGroup))
+	mainFSL += fsl.AppendInto(Main, "m_policy_rule", "@skip_remaining::BOOLEAN = false", fsl.Goto(PolicyRule))
 	mainFSL += fsl.AppendInto(Main, "m_weblog_generate", "", fsl.Goto(WeblogGenerate))
 	mainFSL += "ENTRYPOINT TABLE main;"
 	return mainFSL

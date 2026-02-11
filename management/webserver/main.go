@@ -175,6 +175,8 @@ func main() {
 
 	limitedRouters.GET(api.DetectLogList, api.GetDetectLogList)
 	limitedRouters.GET(api.DetectLogDetail, api.GetDetectLogDetail)
+	limitedRouters.GET(api.VerificationLogList, api.GetVerificationLogList)
+	limitedRouters.GET(api.DetectLogDownload, api.GetDetectLogDownload)
 
 	limitedRouters.POST(api.Website, api.PostWebsite)
 	limitedRouters.PUT(api.Website, api.PutWebsite)
@@ -202,6 +204,14 @@ func main() {
 
 	limitedRouters.GET(api.SrcIPConfig, api.GetSrcIPConfig)
 	limitedRouters.PUT(api.SrcIPConfig, api.PutSrcIPConfig)
+
+	// Forbidden page endpoints
+	limitedRouters.GET(api.ForbiddenPage+"/:id", api.GetForbiddenPage)
+	limitedRouters.POST(api.ForbiddenPage, api.SetForbiddenPage)
+
+	// Website advanced config endpoints
+	limitedRouters.GET(api.Website+"/:id/advanced_config", api.GetWebsiteAdvancedConfig)
+	limitedRouters.POST(api.Website+"/advanced_config", api.SetWebsiteAdvancedConfig)
 
 	logger.Info("Staring...")
 	if err := r.Run(config.GlobalConfig.Server.ListenAddr); err != nil {

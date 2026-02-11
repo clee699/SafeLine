@@ -37,8 +37,8 @@ const (
 var pong = pb.Response{Type: Pong, Msg: nil, Err: false}
 
 func generateNginxConfig(website *model.WebsiteConfig) (string, error) {
-	// only ONE upstream supported in v1.0
-	var upstreamAddr string
+	// Support multiple upstream servers for load balancing
+	var upstreamAddrs []string
 	scheme := "http"
 	for _, upstream := range website.Upstreams {
 		urlInfo, err := url.Parse(upstream)
@@ -48,11 +48,15 @@ func generateNginxConfig(website *model.WebsiteConfig) (string, error) {
 		if urlInfo.Scheme == HttpsScheme && urlInfo.Port() == "" {
 			urlInfo.Host = urlInfo.Host + ":" + DefaultHttpsPort
 		}
-		upstreamAddr = fmt.Sprintf(upstreamAddrTpl, urlInfo.Host)
+		upstreamAddrs = append(upstreamAddrs, fmt.Sprintf(upstreamAddrTpl, urlInfo.Host))
 		if len(urlInfo.Scheme) > 0 {
 			scheme = urlInfo.Scheme
 		}
 	}
+	upstreamAddr := strings.Join(upstreamAddrs, "\n    ")
+	
+	// Default load balancing algorithm (round-robin is Nginx default)
+	loadBalancerAlgorithm := ""
 
 	sslFlag := ""
 	sslCertFilename := ""
@@ -81,7 +85,7 @@ func generateNginxConfig(website *model.WebsiteConfig) (string, error) {
 	}
 
 	upstreamName := fmt.Sprintf(backendTpl, website.Id)
-	nginxConfig := strings.TrimSpace(fmt.Sprintf(nginxConfigTpl, upstreamName, upstreamAddr, serverListen, serverName, sslCertFilename, sslCertKeyFilename, scheme, upstreamName, website.Id))
+	nginxConfig := strings.TrimSpace(fmt.Sprintf(nginxConfigTpl, upstreamName, upstreamAddr, loadBalancerAlgorithm, serverListen, serverName, sslCertFilename, sslCertKeyFilename, website.Id, scheme, upstreamName, website.Id))
 	return nginxConfig, nil
 }
 

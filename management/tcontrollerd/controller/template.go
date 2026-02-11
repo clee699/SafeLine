@@ -3,6 +3,7 @@ package controller
 var nginxConfigTpl = `
 upstream %s {
     %s
+    %s
     keepalive 128;
     keepalive_timeout 75;
 }
@@ -14,7 +15,7 @@ server {
     location = /forbidden_page {
         internal;
         root /etc/nginx/forbidden_pages;
-        try_files /default_forbidden_page.html =403;
+        try_files /website_%d_forbidden_page.html /default_forbidden_page.html =403;
     }
     location ^~ / {
         proxy_pass %s://%s;
