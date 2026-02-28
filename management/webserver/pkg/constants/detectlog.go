@@ -59,6 +59,9 @@ var (
 		62: "未知",
 		63: "威胁情报",
 		64: "Cookie 篡改",
+		65: "人机验证",
+		66: "身份认证",
+		67: "等候室",
 	}
 
 	CountryCode = map[string]string{

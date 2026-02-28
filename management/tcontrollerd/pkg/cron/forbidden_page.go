@@ -32,6 +32,7 @@ func checkAndUpdateForbiddenPage() {
 		return
 	}
 
+	// Only update if the file is the default one, don't overwrite custom pages
 	content, err := ioutil.ReadFile(forbiddenPagePath)
 	if err != nil {
 		logger.Error(err)
@@ -45,7 +46,13 @@ func checkAndUpdateForbiddenPage() {
 		return
 	}
 
-	err = ioutil.WriteFile(forbiddenPagePath, []byte(constants.DefaultForbiddenPage), 0644)
+	// Check if it's a custom page (website_*_forbidden_page.html)
+	if strings.HasPrefix(filepath.Base(forbiddenPagePath), "website_") && strings.HasSuffix(filepath.Base(forbiddenPagePath), "_forbidden_page.html") {
+		// This is a custom forbidden page, don't overwrite it
+		return
+	}
+
+	err = utils.EnsureWriteFile(forbiddenPagePath, []byte(constants.DefaultForbiddenPage), 0644)
 	if err != nil {
 		logger.Error(err)
 		return

@@ -17,14 +17,19 @@ type PolicyRulePattern struct {
 }
 
 const (
-	KeySrcIP = "src_ip"
-	KeyURI   = "uri"
-	KeyHost  = "host"
+	KeySrcIP    = "src_ip"
+	KeyURI      = "uri"
+	KeyHost     = "host"
+	KeyCountry  = "country"
+	KeyProvince = "province"
+	KeyCity     = "city"
 
-	OpEq     = "eq"     // 完全相等
-	OpMatch  = "match"  // 模糊匹配
-	OpCIDR   = "cidr"   // CIDR
-	OpHas    = "has"    // 关键字
-	OpPrefix = "prefix" // 前缀关键字
-	OpRe     = "re"     // 正则
+	OpEq       = "eq"       // 完全相等
+	OpMatch    = "match"    // 模糊匹配
+	OpCIDR     = "cidr"     // CIDR
+	OpHas      = "has"      // 关键字
+	OpPrefix   = "prefix"   // 前缀关键字
+	OpRe       = "re"       // 正则
+	OpGeoEq    = "geo_eq"   // 地理位置相等
+	OpGeoNotEq = "geo_not_eq" // 地理位置不相等
 )
