@@ -23,4 +23,6 @@ const (
 	DashboardIntercepts = "/dashboard/intercepts"
 	PolicyGroupGlobal   = "/PolicyGroupGlobal"
 	SrcIPConfig         = "/SrcIPConfig"
+	// 告警配置API端点
+	AlertConfig         = "/AlertConfig"
 )

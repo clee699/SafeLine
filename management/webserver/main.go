@@ -17,6 +17,7 @@ import (
 	"chaitin.cn/patronus/safeline-2/management/webserver/cmd"
 	"chaitin.cn/patronus/safeline-2/management/webserver/middleware"
 	"chaitin.cn/patronus/safeline-2/management/webserver/model"
+	"chaitin.cn/patronus/safeline-2/management/webserver/pkg/alert"
 	"chaitin.cn/patronus/safeline-2/management/webserver/pkg/config"
 	"chaitin.cn/patronus/safeline-2/management/webserver/pkg/constants"
 	"chaitin.cn/patronus/safeline-2/management/webserver/pkg/cron"
@@ -134,6 +135,11 @@ func main() {
 		logger.Fatalln("Failed to start gRPC server: ", err)
 	}
 
+	// 启动告警管理器
+	logger.Info("Starting alert manager...")
+	alertManager := alert.NewAlertManager()
+	go alertManager.Start()
+
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 
@@ -203,6 +209,20 @@ func main() {
 	limitedRouters.GET(api.SrcIPConfig, api.GetSrcIPConfig)
 	limitedRouters.PUT(api.SrcIPConfig, api.PutSrcIPConfig)
 
+	// 告警配置API
+	limitedRouters.GET(api.AlertConfig, api.GetAlertConfig)
+	limitedRouters.POST(api.AlertConfig, api.PostAlertConfig)
+	limitedRouters.PUT(api.AlertConfig, api.PutAlertConfig)
+	limitedRouters.DELETE(api.AlertConfig, api.DeleteAlertConfig)
+
+	// 静态文件服务
+	r.Static("/static", "./static")
+	
+	// 告警配置管理页面路由
+	r.GET("/alert", func(c *gin.Context) {
+		c.File("./static/alert/index.html")
+	})
+	
 	logger.Info("Staring...")
 	if err := r.Run(config.GlobalConfig.Server.ListenAddr); err != nil {
 		logger.Fatalln("Error occurred when running web server: ", err)

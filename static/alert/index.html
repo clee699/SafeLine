@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>告警配置管理</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>告警配置管理</h1>
+        
+        <!-- 全局设置 -->
+        <div class="global-settings">
+            <h2>全局设置</h2>
+            <div class="setting-item">
+                <label for="alert-enabled">
+                    <input type="checkbox" id="alert-enabled"> 启用全局告警
+                </label>
+            </div>
+            <div class="setting-item">
+                <label for="check-interval">
+                    检查间隔：<input type="number" id="check-interval" min="1" max="3600" value="10"> 秒
+                </label>
+            </div>
+            <div class="setting-item">
+                <label for="default-level">
+                    默认告警级别：
+                    <select id="default-level">
+                        <option value="1">低风险</option>
+                        <option value="2" selected>中风险</option>
+                        <option value="3">高风险</option>
+                    </select>
+                </label>
+            </div>
+            <button id="save-global" class="btn btn-primary">保存全局设置</button>
+        </div>
+
+        <!-- 告警配置列表 -->
+        <div class="alert-configs">
+            <h2>告警配置列表</h2>
+            <button id="add-config" class="btn btn-success">添加告警配置</button>
+            <table id="config-table">
+                <thead>
+                    <tr>
+                        <th>名称</th>
+                        <th>类型</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="config-list">
+                    <!-- 配置列表将通过JavaScript动态生成 -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 配置编辑模态框 -->
+    <div id="config-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modal-title">添加告警配置</h2>
+            <form id="config-form">
+                <input type="hidden" id="config-id">
+                
+                <div class="form-group">
+                    <label for="config-name">名称：</label>
+                    <input type="text" id="config-name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="config-type">类型：</label>
+                    <select id="config-type" required>
+                        <option value="1">邮件告警</option>
+                        <option value="2">微信告警</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="config-enabled">
+                        <input type="checkbox" id="config-enabled"> 启用
+                    </label>
+                </div>
+                
+                <!-- 邮件配置 -->
+                <div id="email-config" class="config-type-section">
+                    <h3>邮件配置</h3>
+                    <div class="form-group">
+                        <label for="smtp-server">SMTP服务器：</label>
+                        <input type="text" id="smtp-server" placeholder="smtp.example.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="smtp-port">SMTP端口：</label>
+                        <input type="number" id="smtp-port" min="1" max="65535" value="25">
+                    </div>
+                    <div class="form-group">
+                        <label for="smtp-username">用户名：</label>
+                        <input type="text" id="smtp-username">
+                    </div>
+                    <div class="form-group">
+                        <label for="smtp-password">密码：</label>
+                        <input type="password" id="smtp-password">
+                    </div>
+                    <div class="form-group">
+                        <label for="smtp-from">发件人：</label>
+                        <input type="email" id="smtp-from">
+                    </div>
+                    <div class="form-group">
+                        <label for="smtp-to">收件人：</label>
+                        <input type="email" id="smtp-to" placeholder="用逗号分隔多个邮箱">
+                    </div>
+                </div>
+                
+                <!-- 微信配置 -->
+                <div id="wechat-config" class="config-type-section" style="display: none;">
+                    <h3>微信配置</h3>
+                    <div class="form-group">
+                        <label for="wechat-webhook">Webhook URL：</label>
+                        <input type="url" id="wechat-webhook" placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="alert-levels">告警级别：</label>
+                    <select id="alert-levels" multiple>
+                        <option value="1">低风险</option>
+                        <option value="2">中风险</option>
+                        <option value="3">高风险</option>
+                    </select>
+                    <small>按住Ctrl可多选</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="attack-types">攻击类型：</label>
+                    <input type="text" id="attack-types" placeholder="留空表示所有类型">
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">保存</button>
+                    <button type="button" id="cancel-form" class="btn btn-secondary">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

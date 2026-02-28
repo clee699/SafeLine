@@ -7,6 +7,7 @@ type Config struct {
 	Detector     DetectorConfig
 	Telemetry    TelemetryConfig
 	GPRC         GRPCConfig
+	Alert        AlertConfig
 	PlatformAddr string
 	MgtResDir    string
 	NgxResDir    string
@@ -20,6 +21,7 @@ func DefaultGlobalConfig() Config {
 		Detector:     DefaultDetectorConfig(),
 		Telemetry:    DefaultTelemetryConfig(),
 		GPRC:         DefaultGRPCConfig(),
+		Alert:        DefaultAlertConfig(),
 		PlatformAddr: "https://waf-ce.chaitin.cn",
 		MgtResDir:    "/resources/management",
 		NgxResDir:    "/resources/nginx",

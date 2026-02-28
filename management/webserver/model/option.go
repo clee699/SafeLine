@@ -31,6 +31,14 @@ func initOptions() error {
 	_ = db.Clauses(clause.OnConflict{DoNothing: true}).Create(&machineId)
 	go NotifyInstallation(machineId.Value)
 
+	// 添加告警全局开关，默认启用
+	alertEnabled := Options{Key: constants.AlertEnabled, Value: "true"}
+	db.Clauses(clause.OnConflict{DoNothing: true}).Create(&alertEnabled)
+
+	// 添加告警检查间隔，默认10秒
+	alertInterval := Options{Key: constants.AlertCheckInterval, Value: "10"}
+	db.Clauses(clause.OnConflict{DoNothing: true}).Create(&alertInterval)
+
 	return nil
 }
 

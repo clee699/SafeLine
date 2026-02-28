@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # 数据库服务
+  postgres:
+    image: postgres:14-alpine
+    container_name: safeline-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: safeline
+      POSTGRES_PASSWORD: safeline
+      POSTGRES_DB: safeline
+    volumes:
+      - safeline-postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - safeline-network
+  
+  # 管理服务
+  webserver:
+    build:
+      context: ./management/webserver
+      dockerfile: Dockerfile
+    container_name: safeline-webserver
+    restart: always
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=safeline
+      - DB_PASSWORD=safeline
+      - DB_NAME=safeline
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./management/webserver/config.yml:/app/config.yml
+      - ./management/webserver/static:/app/static
+    depends_on:
+      - postgres
+    networks:
+      - safeline-network
+  
+  # 检测服务
+  detector:
+    image: chaitin/safeline-detector:latest
+    container_name: safeline-detector
+    restart: always
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+    volumes:
+      - safeline-detector-data:/data
+    networks:
+      - safeline-network
+
+volumes:
+  safeline-postgres-data:
+  safeline-detector-data:
+
+networks:
+  safeline-network:
+    driver: bridge

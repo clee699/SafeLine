@@ -40,6 +40,10 @@ func InitConfigs(configFilePath string) error {
 		return err
 	}
 
+	if err = GlobalConfig.Alert.Load(s); err != nil {
+		return err
+	}
+
 	if err := settings.Unmarshal("platform_addr", &GlobalConfig.PlatformAddr); err != nil {
 		return err
 	}
